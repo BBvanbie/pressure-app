@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ホース圧力計算アプリ</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #e7f0fd;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h1 {
+      color: #555;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    .container {
+      background-color: #ffffff;
+      padding: 20px 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      text-align: left;
+      color: #555;
+    }
+
+    input[type="number"], select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    input[type="number"]:focus, select:focus {
+      border-color: #3182ce;
+      outline: none;
+    }
+
+    button {
+      background-color: #3182ce;
+      color: white;
+      border: none;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 8px;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #225ea8;
+      transform: translateY(-3px);
+    }
+
+    .result, .calculation-steps {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #333;
+      text-align: left;
+    }
+
+    .calculation-steps pre {
+      background-color: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      overflow-x: auto;
+      color: #444;
+    }
+
+    @media (max-width: 400px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      button {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>ホース圧力計算アプリ</h1>
+
+  <div class="container">
+    <label for="hose65mmCount">65mmのホースの本数</label>
+    <input type="number" id="hose65mmCount" min="0" placeholder="例: 2" required>
+
+    <label for="hose50mmCount">50mmのホースの本数</label>
+    <input type="number" id="hose50mmCount" min="0" placeholder="例: 2" required>
+
+    <label for="nozzleType">ノズルの種類を選択</label>
+    <select id="nozzleType">
+      <option value="none">未選択</option>
+      <option value="gun">ガンタイプノズル</option>
+      <option value="21改">21改</option>
+    </select>
+
+    <label for="flowRate">流量 (L)</label>
+    <input type="number" id="flowRate" min="0.01" step="0.01" placeholder="例: 350" required>
+
+    <label for="levelInput">階層 (地下はマイナス)</label>
+    <input type="number" id="levelInput" placeholder="例: -1 (地下1階), 3 (3階)" required>
+
+    <button id="calculateButton">圧力を計算する</button>
+
+    <div class="result" id="result"></div>
+    <div class="calculation-steps" id="calculationSteps"></div>
+  </div>
+
+  <script>
+    const coefficients = { 50: 0.361, 65: 0.136 };
+    const branchPressure = 0.1; 
+    const nozzlePressures = { 
+      gun: 0.5, 
+      "21改": 0.3 
+    };
+    const levelCoefficient = 0.03;
+
+    const calculateButton = document.getElementById('calculateButton');
+    const resultElement = document.getElementById('result');
+    const calculationStepsElement = document.getElementById('calculationSteps');
+
+    calculateButton.addEventListener('click', function() {
+      const hose65mmCount = parseFloat(document.getElementById('hose65mmCount').value) || 0;
+      const hose50mmCount = parseFloat(document.getElementById('hose50mmCount').value) || 0;
+      const nozzleType = document.getElementById('nozzleType').value;
+      const flowRateL = parseFloat(document.getElementById('flowRate').value);
+      const level = parseFloat(document.getElementById('levelInput').value) || 0;
+
+      const flowRateCubicMeters = flowRateL / 1000;
+
+      let pressure65 = coefficients[65] * hose65mmCount * (flowRateCubicMeters ** 2);
+      let pressure50 = coefficients[50] * hose50mmCount * (flowRateCubicMeters ** 2);
+
+      let totalPressure = pressure65 + pressure50;
+
+      let branchApplied = false;
+      if (hose65mmCount > 0 && hose50mmCount > 0) {
+        totalPressure += branchPressure;
+        branchApplied = true;
+      }
+
+      if (nozzleType in nozzlePressures) {
+        totalPressure += nozzlePressures[nozzleType];
+      }
+
+      if (!isNaN(level)) {
+        totalPressure += level * levelCoefficient;
+      }
+
+      resultElement.innerHTML = `🧪 総圧力は <strong>${totalPressure.toFixed(2)} MPa</strong> です。`;
+
+      calculationStepsElement.innerHTML = `
+        <pre>
+65mmの計算: 0.136 × ${hose65mmCount} × (${flowRateCubicMeters}^2) = ${pressure65.toFixed(5)} MPa
+50mmの計算: 0.361 × ${hose50mmCount} × (${flowRateCubicMeters}^2) = ${pressure50.toFixed(5)} MPa
+分岐の加算: ${branchApplied ? `+${branchPressure} MPa` : 'なし'}
+ノズルの加算: +${nozzlePressures[nozzleType] || 0} MPa
+階層の加算: +${level * levelCoefficient} MPa
+合計圧力: ${totalPressure.toFixed(2)} MPa
+        </pre>`;
+    });
+  </script>
+
+</body>
+</html>
