@@ -2,7 +2,6 @@
     "name": "ホース圧力計算アプリ",
     "short_name": "圧力計算",
     "description": "ホースの圧力を簡単に計算できるアプリです。",
-    "start_url": "./index.html",
     "start_url": "/pressure-app/index.html",
     "display": "standalone",
     "background_color": "#e7f0fd",
